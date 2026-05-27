@@ -2,15 +2,36 @@
 set -euo pipefail
 
 INTERFACE="${RF_INTERFACE:-en8}"
-PIDFILE="/tmp/dnsmasq-rf.pid"
+LEASE_FILE="/tmp/rf-network-kit-dnsmasq.leases"
 
-echo "[RF] Interface:"
+SCRIPT_PATH="$(realpath "$0")"
+PROJECT_ROOT="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
+CONF="$PROJECT_ROOT/config/dnsmasq-rf.conf"
+
+echo "[RF] Interface: $INTERFACE"
 ifconfig "$INTERFACE" || true
 
 echo
-echo "[RF] dnsmasq:"
-if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
-  echo "running, PID $(cat "$PIDFILE")"
+echo "[RF] dnsmasq status:"
+
+PID="$(pgrep -f "dnsmasq.*$CONF" || true)"
+
+if [ -n "$PID" ]; then
+    echo "running, PID $PID"
 else
-  echo "not running"
+    echo "not running"
+
+    if sudo lsof -nP -iUDP:67 | grep -q dnsmasq; then
+        echo "warning: another dnsmasq is using UDP port 67"
+        sudo lsof -nP -iUDP:67
+    fi
+fi
+
+echo
+echo "[RF] DHCP leases:"
+
+if [ -f "$LEASE_FILE" ]; then
+    cat "$LEASE_FILE"
+else
+    echo "no lease file found at $LEASE_FILE"
 fi

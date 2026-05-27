@@ -4,18 +4,34 @@ set -euo pipefail
 INTERFACE="${RF_INTERFACE:-en8}"
 IP="${RF_HOST_IP:-10.99.0.1}"
 NETMASK="${RF_NETMASK:-255.255.255.0}"
-CONF="$(cd "$(dirname "$0")/.." && pwd)/config/dnsmasq-rf.conf"
-PIDFILE="/tmp/dnsmasq-rf.pid"
+
+SCRIPT_PATH="$(realpath "$0")"
+PROJECT_ROOT="$(cd "$(dirname "$SCRIPT_PATH")/.." && pwd)"
+CONF="$PROJECT_ROOT/config/dnsmasq-rf.conf"
 
 echo "[RF] Configuring interface $INTERFACE..."
 sudo ifconfig "$INTERFACE" inet "$IP" netmask "$NETMASK"
 
-echo "[RF] Starting dnsmasq..."
-if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
-  echo "[RF] dnsmasq already running with PID $(cat "$PIDFILE")"
-else
-  sudo dnsmasq --conf-file="$CONF" --pid-file="$PIDFILE"
+echo "[RF] Checking dnsmasq..."
+
+PID="$(pgrep -f "dnsmasq.*$CONF" || true)"
+
+if [ -n "$PID" ]; then
+    echo "[RF] dnsmasq already running with PID $PID"
+    exit 0
 fi
+
+if sudo lsof -nP -iUDP:67 | grep -q dnsmasq; then
+    echo "[RF] ERROR: another dnsmasq/DHCP process is already using UDP port 67."
+    sudo lsof -nP -iUDP:67
+    exit 1
+fi
+
+echo "[RF] Starting dnsmasq..."
+sudo dnsmasq \
+  --conf-file="$CONF" \
+  --dhcp-leasefile="/tmp/rf-network-kit-dnsmasq.leases"
 
 echo "[RF] Ready."
 echo "[RF] Host IP: $IP"
+echo "[RF] Config: $CONF"
