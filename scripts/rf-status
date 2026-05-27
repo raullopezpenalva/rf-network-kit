@@ -1,0 +1,16 @@
+#!/bin/bash
+set -euo pipefail
+
+INTERFACE="${RF_INTERFACE:-en8}"
+PIDFILE="/tmp/dnsmasq-rf.pid"
+
+echo "[RF] Interface:"
+ifconfig "$INTERFACE" || true
+
+echo
+echo "[RF] dnsmasq:"
+if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+  echo "running, PID $(cat "$PIDFILE")"
+else
+  echo "not running"
+fi

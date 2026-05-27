@@ -1,0 +1,21 @@
+#!/bin/bash
+set -euo pipefail
+
+INTERFACE="${RF_INTERFACE:-en8}"
+IP="${RF_HOST_IP:-10.99.0.1}"
+NETMASK="${RF_NETMASK:-255.255.255.0}"
+CONF="$(cd "$(dirname "$0")/.." && pwd)/config/dnsmasq-rf.conf"
+PIDFILE="/tmp/dnsmasq-rf.pid"
+
+echo "[RF] Configuring interface $INTERFACE..."
+sudo ifconfig "$INTERFACE" inet "$IP" netmask "$NETMASK"
+
+echo "[RF] Starting dnsmasq..."
+if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+  echo "[RF] dnsmasq already running with PID $(cat "$PIDFILE")"
+else
+  sudo dnsmasq --conf-file="$CONF" --pid-file="$PIDFILE"
+fi
+
+echo "[RF] Ready."
+echo "[RF] Host IP: $IP"

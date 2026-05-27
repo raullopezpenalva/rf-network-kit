@@ -1,0 +1,19 @@
+#!/bin/bash
+set -euo pipefail
+
+INTERFACE="${RF_INTERFACE:-en8}"
+SERVICE_NAME="${RF_SERVICE_NAME:-AX88179B}"
+PIDFILE="/tmp/dnsmasq-rf.pid"
+
+echo "[RF] Stopping dnsmasq..."
+if [ -f "$PIDFILE" ]; then
+  sudo kill "$(cat "$PIDFILE")" 2>/dev/null || true
+  sudo rm -f "$PIDFILE"
+else
+  echo "[RF] No PID file found."
+fi
+
+echo "[RF] Returning $SERVICE_NAME to DHCP..."
+sudo networksetup -setdhcp "$SERVICE_NAME"
+
+echo "[RF] Stopped."
